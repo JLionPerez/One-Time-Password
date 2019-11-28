@@ -1,3 +1,10 @@
+/*
+* Title: Program 4 - OTP (keygen.c)
+* Description: Generates key
+* Author: Joelle Perez
+* Date: 6 December 2019
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
