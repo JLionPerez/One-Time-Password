@@ -32,5 +32,5 @@ int main(int argc, char *argv[]) {
     }
     key_str[key_length] = '\0'; //null terminator at the end of string
 
-    printf("%s\n", key_str);
+    fprintf(stdout,"%s\n", key_str); //send to stdout
 }
