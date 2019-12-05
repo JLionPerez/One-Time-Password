@@ -27,18 +27,18 @@ char* encrypt(char* text, char* key, int length) {
 
 int main() //int argc, char *argv[]
 {
-	char* plaintext = "HELLO";
-	char* key_text = "Y YVD";
-	int size = 5;
+	// char* plaintext = "HELLO";
+	// char* key_text = "Y YVD";
+	// int size = 5;
 
-	char* str = encrypt(plaintext, key_text, 5);
+	// char* str = encrypt(plaintext, key_text, 5);
 
-	printf("Cipher: %s\n", str);
+	// printf("Cipher: %s\n", str);
 
-	// int listenSocketFD, establishedConnectionFD, portNumber, charsRead;
-	// socklen_t sizeOfClientInfo;
+	int listenSocketFD, establishedConnectionFD, portNumber, charsRead;
+	socklen_t sizeOfClientInfo;
 	// char buffer[256];
-	// struct sockaddr_in serverAddress, clientAddress;
+	struct sockaddr_in serverAddress, clientAddress;
 
 	// if (argc < 2) { fprintf(stderr,"USAGE: %s port\n", argv[0]); exit(1); } // Check usage & args
 
