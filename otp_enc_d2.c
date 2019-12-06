@@ -8,17 +8,52 @@
 
 void error(const char *msg) { perror(msg); exit(1); } // Error function used for reporting issues
 
-//works for upper case letters but not for spaces
+//encrypts plaintext into ciphertext
 char encrypt(char p_char, char k_char) {
-	char c_char = ((p_char - 65) + (k_char - 65)) % 26;
+	char c_char;
+
+	if(p_char == ' ') { p_char = '['; }
+	if(k_char == ' ') { k_char = '['; }
+
+	c_char = ((p_char - 65) + (k_char - 65)) % 27;
 	c_char += 65;
 
 	return c_char;
 }
 
+//gets information for size, plaintext, and key
+void get_info(char *plaintext_buffer, char *key_buffer, int *p_size, int establishedConnectionFD) {
+	int charsRead;
+	// gets the int from client and display it
+	charsRead = recv(establishedConnectionFD, p_size, sizeof(int), 0);
+	if (charsRead < 0) error("ERROR reading from socket");
+	printf("SERVER: I received the buffer length from the client: \"%d\"\n", *p_size);
+	fflush(stdout);
+
+	// get the plaintext buffer
+	memset(plaintext_buffer, '\0', *p_size);
+	charsRead = 0;
+	while(charsRead < *p_size) {
+		charsRead += recv(establishedConnectionFD, plaintext_buffer + charsRead, *p_size - charsRead, 0);
+	}
+	if (charsRead < 0) error("ERROR reading from socket");
+	printf("SERVER: I received this plaintext from the client: \"%s\"\n", plaintext_buffer);
+	fflush(stdout);
+
+	// get the key buffer
+	memset(key_buffer, '\0', *p_size);
+	charsRead = 0;
+	while(charsRead < *p_size) {
+		charsRead += recv(establishedConnectionFD, key_buffer + charsRead, *p_size - charsRead, 0);
+	}
+	if (charsRead < 0) error("ERROR reading from socket");
+	printf("SERVER: I received this key from the client: \"%s\"\n", key_buffer);
+	fflush(stdout);	
+}
+
 int main(int argc, char *argv[])
 {
-	int listenSocketFD, establishedConnectionFD, portNumber, charsRead, p_size;
+	int listenSocketFD, establishedConnectionFD, portNumber, p_size, charsWritten;
 	socklen_t sizeOfClientInfo;
 	char buffer[256]; // message
 	struct sockaddr_in serverAddress, clientAddress;
@@ -57,31 +92,8 @@ int main(int argc, char *argv[])
 
 	while(1) {
 
-		// gets the int from client and display it
-		charsRead = recv(establishedConnectionFD, &p_size, sizeof(int), 0);
-		if (charsRead < 0) error("ERROR reading from socket");
-		printf("SERVER: I received the buffer length from the client: \"%d\"\n", p_size);
-		fflush(stdout);
-
-		// get the plaintext buffer
-		memset(plaintext_buffer, '\0', p_size);
-		charsRead = 0;
-		while(charsRead < p_size) {
-			charsRead += recv(establishedConnectionFD, plaintext_buffer + charsRead, p_size - charsRead, 0);
-		}
-		if (charsRead < 0) error("ERROR reading from socket");
-		printf("SERVER: I received this plaintext from the client: \"%s\"\n", plaintext_buffer);
-		fflush(stdout);
-
-		// get the key buffer
-		memset(key_buffer, '\0', p_size);
-		charsRead = 0;
-		while(charsRead < p_size) {
-			charsRead += recv(establishedConnectionFD, key_buffer + charsRead, p_size - charsRead, 0);
-		}
-		if (charsRead < 0) error("ERROR reading from socket");
-		printf("SERVER: I received this key from the client: \"%s\"\n", key_buffer);
-		fflush(stdout);
+		//gets information for buffers
+		get_info(plaintext_buffer, key_buffer, &p_size, establishedConnectionFD);
 
 		//fork
 
@@ -90,7 +102,6 @@ int main(int argc, char *argv[])
 		for(i = 0; i < p_size; i++) {
 			cipher_buffer[i] = encrypt(plaintext_buffer[i], key_buffer[i]);
 		}
-
 		printf("SERVER: Cipher: %s\n", cipher_buffer);
 		fflush(stdout);
 
