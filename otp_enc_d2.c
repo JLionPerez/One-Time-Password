@@ -8,6 +8,14 @@
 
 void error(const char *msg) { perror(msg); exit(1); } // Error function used for reporting issues
 
+//works for upper case letters but not for spaces
+char encrypt(char p_char, char k_char) {
+	char c_char = ((p_char - 65) + (k_char - 65)) % 26;
+	c_char += 65;
+
+	return c_char;
+}
+
 int main(int argc, char *argv[])
 {
 	int listenSocketFD, establishedConnectionFD, portNumber, charsRead, p_size;
@@ -73,6 +81,17 @@ int main(int argc, char *argv[])
 		}
 		if (charsRead < 0) error("ERROR reading from socket");
 		printf("SERVER: I received this key from the client: \"%s\"\n", key_buffer);
+		fflush(stdout);
+
+		//fork
+
+		//encrypt
+		int i;
+		for(i = 0; i < p_size; i++) {
+			cipher_buffer[i] = encrypt(plaintext_buffer[i], key_buffer[i]);
+		}
+
+		printf("SERVER: Cipher: %s\n", cipher_buffer);
 		fflush(stdout);
 
 		// Send a Success message and cipher back to the client 
