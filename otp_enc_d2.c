@@ -6,6 +6,8 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
+int child_counter = 0;
+
 void error(const char *msg) { perror(msg); exit(1); } // Error function used for reporting issues
 
 //encrypts plaintext into ciphertext
@@ -51,6 +53,37 @@ void get_info(char *plaintext_buffer, char *key_buffer, int *p_size, int establi
 	fflush(stdout);	
 }
 
+void switch_pids(char *plaintext_buffer, char *key_buffer, char *cipher_buffer, int *p_size, int establishedConnectionFD) {
+	pid_t spawnpid = fork();
+
+	switch(spawnpid)
+	{
+		case -1: //error
+				perror("error fork gone wrong");
+				exit(1);
+				break;
+			
+		case 0: //child
+			//gets information for buffers
+			get_info(plaintext_buffer, key_buffer, p_size, establishedConnectionFD);
+
+			//encrypt
+			int i;
+			for(i = 0; i < *p_size; i++) {
+				cipher_buffer[i] = encrypt(plaintext_buffer[i], key_buffer[i]);
+			}
+			printf("SERVER: Cipher: %s\n", cipher_buffer);
+			fflush(stdout);
+
+			close(establishedConnectionFD); // Close the existing socket which is connected to the client
+			break;
+		
+		default: //parent
+			child_counter--;
+			// waitpid(-1, NULL, WNOHANG);
+    }
+}
+
 int main(int argc, char *argv[])
 {
 	int listenSocketFD, establishedConnectionFD, portNumber, p_size, charsWritten;
@@ -81,8 +114,8 @@ int main(int argc, char *argv[])
 
 	// Accept a connection, blocking if one is not available until one connects
 	sizeOfClientInfo = sizeof(clientAddress); // Get the size of the address for the client that will connect
-	establishedConnectionFD = accept(listenSocketFD, (struct sockaddr *)&clientAddress, &sizeOfClientInfo); // Accept
-	if (establishedConnectionFD < 0) error("ERROR on accept");
+	// establishedConnectionFD = accept(listenSocketFD, (struct sockaddr *)&clientAddress, &sizeOfClientInfo); // Accept
+	// if (establishedConnectionFD < 0) error("ERROR on accept");
 
 	// Get the message from the client and display it
 	// memset(buffer, '\0', 256);
@@ -92,27 +125,38 @@ int main(int argc, char *argv[])
 
 	while(1) {
 
-		//gets information for buffers
-		get_info(plaintext_buffer, key_buffer, &p_size, establishedConnectionFD);
+		if(child_counter > 5) {
+			break;
+		}
+
+		establishedConnectionFD = accept(listenSocketFD, (struct sockaddr *)&clientAddress, &sizeOfClientInfo); // Accept
+		if (establishedConnectionFD < 0) error("ERROR on accept");
+		child_counter++;
 
 		//fork
+		switch_pids(plaintext_buffer, key_buffer, cipher_buffer, &p_size, establishedConnectionFD);
+		waitpid(-1, NULL, WNOHANG);
+		
+		//gets information for buffers
+		//get_info(plaintext_buffer, key_buffer, &p_size, establishedConnectionFD);
 
 		//encrypt
-		int i;
-		for(i = 0; i < p_size; i++) {
-			cipher_buffer[i] = encrypt(plaintext_buffer[i], key_buffer[i]);
-		}
-		printf("SERVER: Cipher: %s\n", cipher_buffer);
-		fflush(stdout);
+		// int i;
+		// for(i = 0; i < p_size; i++) {
+		// 	cipher_buffer[i] = encrypt(plaintext_buffer[i], key_buffer[i]);
+		// }
+		// printf("SERVER: Cipher: %s\n", cipher_buffer);
+		// fflush(stdout);
 
 		// Send a Success message and cipher back to the client 
 		//charsRead = 0;
 		// charsRead = send(establishedConnectionFD, "I am the server, and I got your message", 39, 0); // Send success back
 		// if (charsRead < 0) error("ERROR writing to socket");
-		break;
+		
+		//break;
 	}
 
-	close(establishedConnectionFD); // Close the existing socket which is connected to the client
-	close(listenSocketFD); // Close the listening socket
+	// close(establishedConnectionFD); // Close the existing socket which is connected to the client
+	//close(listenSocketFD); // Close the listening socket
 	return 0; 
 }

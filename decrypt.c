@@ -12,7 +12,7 @@ char decrypt(char c_char, char k_char) {
 	if(c_char == ' ') { c_char = '['; }
 	if(k_char == ' ') { k_char = '['; }
 
-	p_char = ((p_char - 65) + (k_char - 65)) % 27;
+	p_char = ((p_char - 65) - (k_char - 65)) % 27;
 	p_char += 65;
 
 	return p_char;
