@@ -5,6 +5,7 @@
 #include <sys/types.h> 
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <stdbool.h>
 
 int child_counter = 0;
 
@@ -53,6 +54,40 @@ void get_info(char *plaintext_buffer, char *key_buffer, int *p_size, int establi
 	fflush(stdout);	
 }
 
+void send_cipher(char *cipher_buffer, int *p_size, int establishedConnectionFD) {
+	int charsWritten = 0;
+
+	while(charsWritten < *p_size) {
+		charsWritten += send(establishedConnectionFD, cipher_buffer + charsWritten, *p_size - charsWritten, 0);
+	}
+	if (charsWritten < 0) error("ERROR writing to socket");
+}
+
+bool confirm_right_connection (int establishedConnectionFD) {
+	char confirmation;
+	char confirmed_char = '#';
+	int handshake = 0;
+	
+	//recieve char
+	handshake = recv(establishedConnectionFD, &confirmation, sizeof(char), 0);
+	if (handshake < 0) error("ERROR reading from socket");
+	else {
+		printf("SERVER: I received the char from the client: \"%c\"\n", confirmation);
+		fflush(stdout);
+	}
+
+	//send char
+	handshake = send(establishedConnectionFD, &confirmed_char, sizeof(int), 0); //sends char
+	if (handshake < 0) error("SERVER: ERROR writing to socket");
+	fflush(stdout);
+
+	if(confirmation == confirmed_char) {
+		return true;
+	}
+
+	return false;
+}
+
 void switch_pids(char *plaintext_buffer, char *key_buffer, char *cipher_buffer, int *p_size, int establishedConnectionFD) {
 	pid_t spawnpid = fork();
 
@@ -64,29 +99,39 @@ void switch_pids(char *plaintext_buffer, char *key_buffer, char *cipher_buffer, 
 				break;
 			
 		case 0: //child
-			//gets information for buffers
-			get_info(plaintext_buffer, key_buffer, p_size, establishedConnectionFD);
+			if(confirm_right_connection(establishedConnectionFD)) {
+				//gets information for buffers
+				get_info(plaintext_buffer, key_buffer, p_size, establishedConnectionFD);
 
-			//encrypt
-			int i;
-			for(i = 0; i < *p_size; i++) {
-				cipher_buffer[i] = encrypt(plaintext_buffer[i], key_buffer[i]);
+				//encrypt
+				int i;
+				for(i = 0; i < *p_size; i++) {
+					cipher_buffer[i] = encrypt(plaintext_buffer[i], key_buffer[i]);
+				}
+				send_cipher(cipher_buffer, p_size, establishedConnectionFD); //sends back to server
 			}
-			printf("SERVER: Cipher: %s\n", cipher_buffer);
-			fflush(stdout);
+
+			else {
+				printf("Handshake invalid\n");
+				fflush(stdout);
+			}
 
 			close(establishedConnectionFD); // Close the existing socket which is connected to the client
+			exit(0);
 			break;
 		
 		default: //parent
-			child_counter--;
-			// waitpid(-1, NULL, WNOHANG);
+			if(child_counter == 5) {
+				waitpid(-1, NULL, 0);
+				child_counter--;
+				while (waitpid(-1, NULL, WNOHANG) > 0) child_counter--;
+			}
     }
 }
 
 int main(int argc, char *argv[])
 {
-	int listenSocketFD, establishedConnectionFD, portNumber, p_size, charsWritten;
+	int listenSocketFD, establishedConnectionFD, portNumber, p_size;
 	socklen_t sizeOfClientInfo;
 	char buffer[256]; // message
 	struct sockaddr_in serverAddress, clientAddress;
@@ -114,14 +159,6 @@ int main(int argc, char *argv[])
 
 	// Accept a connection, blocking if one is not available until one connects
 	sizeOfClientInfo = sizeof(clientAddress); // Get the size of the address for the client that will connect
-	// establishedConnectionFD = accept(listenSocketFD, (struct sockaddr *)&clientAddress, &sizeOfClientInfo); // Accept
-	// if (establishedConnectionFD < 0) error("ERROR on accept");
-
-	// Get the message from the client and display it
-	// memset(buffer, '\0', 256);
-	// charsRead = recv(establishedConnectionFD, buffer, 255, 0); // Read the client's message from the socket
-	// if (charsRead < 0) error("ERROR reading from socket");
-	// printf("SERVER: I received this from the client: \"%s\"\n", buffer);
 
 	while(1) {
 
@@ -129,6 +166,7 @@ int main(int argc, char *argv[])
 			break;
 		}
 
+		// Accept a connection, blocking if one is not available until one connects
 		establishedConnectionFD = accept(listenSocketFD, (struct sockaddr *)&clientAddress, &sizeOfClientInfo); // Accept
 		if (establishedConnectionFD < 0) error("ERROR on accept");
 		child_counter++;
@@ -137,25 +175,8 @@ int main(int argc, char *argv[])
 		switch_pids(plaintext_buffer, key_buffer, cipher_buffer, &p_size, establishedConnectionFD);
 		waitpid(-1, NULL, WNOHANG);
 
-		//gets information for buffers
-		//get_info(plaintext_buffer, key_buffer, &p_size, establishedConnectionFD);
-
-		//encrypt
-		// int i;
-		// for(i = 0; i < p_size; i++) {
-		// 	cipher_buffer[i] = encrypt(plaintext_buffer[i], key_buffer[i]);
-		// }
-		// printf("SERVER: Cipher: %s\n", cipher_buffer);
-		// fflush(stdout);
-
-		// Send a Success message and cipher back to the client 
-		//charsRead = 0;
-		// charsRead = send(establishedConnectionFD, "I am the server, and I got your message", 39, 0); // Send success back
-		// if (charsRead < 0) error("ERROR writing to socket");
-		
-		//break;
-
-		printf("%d children", child_counter);
+		printf("%dth children\n", child_counter);
+		fflush(stdout);
 	}
 
 	// close(establishedConnectionFD); // Close the existing socket which is connected to the client

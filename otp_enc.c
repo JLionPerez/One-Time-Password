@@ -49,7 +49,7 @@ bool valid_buffer(char* buffer, int length) {
 
 int main(int argc, char *argv[])
 {
-	int socketFD, charsWritten = 0, charsRead;
+	int socketFD, charsWritten = 0, charsRead = 0;
 	int portNumber = atoi(argv[3]);
 	int p_size, k_size;
 	bool p_flag, k_flag;
@@ -59,6 +59,9 @@ int main(int argc, char *argv[])
 	char* key_buffer;
 	char cipher_buffer[p_size];
 	char buffer[256]; //message
+	char confirmation;
+	char confirmed_char = '#';
+	int handshake;
     
 	// Check usage & args
 	if (argc < 3) { fprintf(stderr,"USAGE: %s hostname port\n", argv[0]); exit(0); } 
@@ -101,63 +104,62 @@ int main(int argc, char *argv[])
 	if (connect(socketFD, (struct sockaddr*)&serverAddress, sizeof(serverAddress)) < 0) // Connect socket to address
 		error("CLIENT: ERROR connecting");
 
-	// Get input message from user
-	// printf("CLIENT: Enter text to send to the server, and then hit enter: ");
-	// memset(buffer, '\0', sizeof(buffer)); // Clear out the buffer array
-	// fgets(buffer, sizeof(buffer) - 1, stdin); // Get input from the user, trunc to buffer - 1 chars, leaving \0
-	// buffer[strcspn(buffer, "\n")] = '\0'; // Remove the trailing \n that fgets adds
-
-	// Send message to server
-	// charsWritten = send(socketFD, buffer, strlen(buffer), 0); // Write to the server
-	// if (charsWritten < 0) error("CLIENT: ERROR writing to socket");
-	// if (charsWritten < strlen(buffer)) printf("CLIENT: WARNING: Not all data written to socket!\n");
-
 	//handshake, making sure it's connecting to right socket, in this case otp_enc -> otp_enc_d only
-
-	// printf("Plaintext: %s\n", plaintext_buffer);
-	// printf("Key: %s\n", key_buffer);
-	// fflush(stdout);
-
-	//send length of plaintext (no need to send key length)
-	charsWritten = send(socketFD, &p_size, sizeof(int), 0); //sends int
-	if (charsWritten < 0) error("CLIENT: ERROR writing to socket");
-	//if (charsWritten < strlen(buffer)) printf("CLIENT: WARNING: Not all data written to socket!\n");
-	// printf("Sent size\n");
+	handshake = send(socketFD, &confirmed_char, sizeof(int), 0); //sends char
+	if (handshake < 0) error("CLIENT: ERROR writing to socket");
 	fflush(stdout);
 
-	//send plaintext to server
-	//memset(plaintext_buffer, '\0', p_size);
-	charsWritten = 0;
-	while(charsWritten < p_size) {
-		charsWritten += send(socketFD, plaintext_buffer + charsWritten, p_size - charsWritten, 0);
+	handshake = recv(socketFD, &confirmation, sizeof(char), 0);
+	if (handshake < 0) error("ERROR reading from socket");
+	else {
+		printf("CLIENT: I received the char from the server: \"%c\"\n", confirmation);
+		fflush(stdout);
 	}
-	if (charsWritten < 0) error("CLIENT: ERROR plaintext writing to socket");
-	if (charsWritten < p_size) { printf("CLIENT: WARNING: Not all data written to socket!\n"); fflush(stdout); }
-	// printf("Sent plaintext\n");
-	fflush(stdout);
 
-	//send key to server
-	//memset(key_buffer, '\0', k_size);
-	charsWritten = 0;
-	while(charsWritten < k_size) {
-		charsWritten += send(socketFD, key_buffer + charsWritten, k_size - charsWritten, 0);
+	if(confirmation == '#') {
+
+		printf("Handshake confirmed\n");
+		fflush(stdout);
+
+		//send length of plaintext (no need to send key length)
+		charsWritten = send(socketFD, &p_size, sizeof(int), 0); //sends int
+		if (charsWritten < 0) error("CLIENT: ERROR writing to socket");
+		fflush(stdout);
+
+		//send plaintext to server
+		charsWritten = 0;
+		while(charsWritten < p_size) {
+			charsWritten += send(socketFD, plaintext_buffer + charsWritten, p_size - charsWritten, 0);
+		}
+		if (charsWritten < 0) error("CLIENT: ERROR plaintext writing to socket");
+		if (charsWritten < p_size) { printf("CLIENT: WARNING: Not all data written to socket!\n"); fflush(stdout); }
+		fflush(stdout);
+
+		//send key to server
+		charsWritten = 0;
+		while(charsWritten < k_size) {
+			charsWritten += send(socketFD, key_buffer + charsWritten, k_size - charsWritten, 0);
+		}
+		if (charsWritten < 0) error("CLIENT: ERROR key writing to socket");
+		if (charsWritten < k_size) { printf("CLIENT: WARNING: Not all data written to socket!\n"); fflush(stdout); }
+		fflush(stdout);
+
+		// Get return message and cipher from server
+		memset(cipher_buffer, '\0', p_size);
+		charsRead = 0;
+		while(charsRead < p_size) {
+			charsRead += recv(socketFD, cipher_buffer + charsRead, p_size - charsRead, 0);
+		}
+		if (charsRead < 0) error("ERROR reading from socket");
+		fprintf(stdout,"CLIENT: I received this cipher from the server: \"%s\"\n", cipher_buffer);
+		fflush(stdout);
+		//include newline in file if outputted
 	}
-	if (charsWritten < 0) error("CLIENT: ERROR key writing to socket");
-	if (charsWritten < k_size) { printf("CLIENT: WARNING: Not all data written to socket!\n"); fflush(stdout); }
-	// printf("Sent key\n");
-	fflush(stdout);
 
-	// Get return message and cipher from server
-	// memset(buffer, '\0', sizeof(buffer)); // Clear out the buffer again for reuse
-	// charsRead = recv(socketFD, buffer, sizeof(buffer) - 1, 0); // Read data from the socket, leaving \0 at end
-	// if (charsRead < 0) error("CLIENT: ERROR reading from socket");
-	// printf("CLIENT: I received this from the server: \"%s\"\n", buffer);
-	//fflush(stdout);
-
-	// memset(plaintext_buffer, '\0', strlen(plaintext_buffer));
-	// memset(key_buffer, '\0', strlen(key_buffer));
-	// k_size = -1;
-	// p_size = -1;
+	else {
+		printf("Handshake invalid\n");
+		fflush(stdout);		
+	}
 
 	close(socketFD); // Close the socket
 	return 0;

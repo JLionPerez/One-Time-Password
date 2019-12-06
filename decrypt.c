@@ -12,7 +12,7 @@ char decrypt(char c_char, char k_char) {
 	if(c_char == ' ') { c_char = '['; }
 	if(k_char == ' ') { k_char = '['; }
 
-	p_char = ((p_char - 65) - (k_char - 65)) % 27;
+	p_char = ((p_char - 65) + (k_char - 65)) % 27;
 	p_char += 65;
 
 	return p_char;
@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
         plaintext_buffer[i] = decrypt(cipher_buffer[i], key_buffer[i]);
     }
 
-    printf("Plaintext: %s\n", cipher_buffer);
+    printf("Plaintext: %s\n", plaintext_buffer);
     fflush(stdout);
 
     return 0;
