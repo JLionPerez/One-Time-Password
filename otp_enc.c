@@ -57,7 +57,8 @@ int main(int argc, char *argv[])
 	struct hostent* serverHostInfo;
 	char* plaintext_buffer;
 	char* key_buffer;
-	char buffer[256];
+	char cipher_buffer[p_size];
+	char buffer[256]; //message
     
 	// Check usage & args
 	if (argc < 3) { fprintf(stderr,"USAGE: %s hostname port\n", argv[0]); exit(0); } 
@@ -119,10 +120,22 @@ int main(int argc, char *argv[])
 	//if (charsWritten < strlen(buffer)) printf("CLIENT: WARNING: Not all data written to socket!\n");
 
 	//send plaintext to server
+	//charsWritten = 0;
+	while(charsWritten < p_size) {
+		charsWritten = send(socketFD, &plaintext_buffer, sizeof(plaintext_buffer), 0);
+	}
+	if (charsWritten < 0) error("CLIENT: ERROR plaintext writing to socket");
+	if (charsWritten < p_size) printf("CLIENT: WARNING: Not all data written to socket!\n");
 
 	//send key to server
+	//charsWritten = 0;
+	while(charsWritten < k_size) {
+		charsWritten = send(socketFD, &key_buffer, sizeof(key_buffer), 0);
+	}
+	if (charsWritten < 0) error("CLIENT: ERROR key writing to socket");
+	if (charsWritten < k_size) printf("CLIENT: WARNING: Not all data written to socket!\n");
 
-	// Get return message from server
+	// Get return message and cipher from server
 	memset(buffer, '\0', sizeof(buffer)); // Clear out the buffer again for reuse
 	charsRead = recv(socketFD, buffer, sizeof(buffer) - 1, 0); // Read data from the socket, leaving \0 at end
 	if (charsRead < 0) error("CLIENT: ERROR reading from socket");
