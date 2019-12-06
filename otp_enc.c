@@ -114,32 +114,50 @@ int main(int argc, char *argv[])
 
 	//handshake, making sure it's connecting to right socket, in this case otp_enc -> otp_enc_d only
 
+	// printf("Plaintext: %s\n", plaintext_buffer);
+	// printf("Key: %s\n", key_buffer);
+	// fflush(stdout);
+
 	//send length of plaintext (no need to send key length)
 	charsWritten = send(socketFD, &p_size, sizeof(int), 0); //sends int
 	if (charsWritten < 0) error("CLIENT: ERROR writing to socket");
 	//if (charsWritten < strlen(buffer)) printf("CLIENT: WARNING: Not all data written to socket!\n");
+	// printf("Sent size\n");
+	fflush(stdout);
 
 	//send plaintext to server
-	//charsWritten = 0;
+	//memset(plaintext_buffer, '\0', p_size);
+	charsWritten = 0;
 	while(charsWritten < p_size) {
-		charsWritten = send(socketFD, &plaintext_buffer, sizeof(plaintext_buffer), 0);
+		charsWritten += send(socketFD, plaintext_buffer + charsWritten, p_size - charsWritten, 0);
 	}
 	if (charsWritten < 0) error("CLIENT: ERROR plaintext writing to socket");
-	if (charsWritten < p_size) printf("CLIENT: WARNING: Not all data written to socket!\n");
+	if (charsWritten < p_size) { printf("CLIENT: WARNING: Not all data written to socket!\n"); fflush(stdout); }
+	// printf("Sent plaintext\n");
+	fflush(stdout);
 
 	//send key to server
-	//charsWritten = 0;
+	//memset(key_buffer, '\0', k_size);
+	charsWritten = 0;
 	while(charsWritten < k_size) {
-		charsWritten = send(socketFD, &key_buffer, sizeof(key_buffer), 0);
+		charsWritten += send(socketFD, key_buffer + charsWritten, k_size - charsWritten, 0);
 	}
 	if (charsWritten < 0) error("CLIENT: ERROR key writing to socket");
-	if (charsWritten < k_size) printf("CLIENT: WARNING: Not all data written to socket!\n");
+	if (charsWritten < k_size) { printf("CLIENT: WARNING: Not all data written to socket!\n"); fflush(stdout); }
+	// printf("Sent key\n");
+	fflush(stdout);
 
 	// Get return message and cipher from server
-	memset(buffer, '\0', sizeof(buffer)); // Clear out the buffer again for reuse
-	charsRead = recv(socketFD, buffer, sizeof(buffer) - 1, 0); // Read data from the socket, leaving \0 at end
-	if (charsRead < 0) error("CLIENT: ERROR reading from socket");
-	printf("CLIENT: I received this from the server: \"%s\"\n", buffer);
+	// memset(buffer, '\0', sizeof(buffer)); // Clear out the buffer again for reuse
+	// charsRead = recv(socketFD, buffer, sizeof(buffer) - 1, 0); // Read data from the socket, leaving \0 at end
+	// if (charsRead < 0) error("CLIENT: ERROR reading from socket");
+	// printf("CLIENT: I received this from the server: \"%s\"\n", buffer);
+	//fflush(stdout);
+
+	// memset(plaintext_buffer, '\0', strlen(plaintext_buffer));
+	// memset(key_buffer, '\0', strlen(key_buffer));
+	// k_size = -1;
+	// p_size = -1;
 
 	close(socketFD); // Close the socket
 	return 0;

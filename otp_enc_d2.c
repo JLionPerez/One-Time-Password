@@ -14,8 +14,8 @@ int main(int argc, char *argv[])
 	socklen_t sizeOfClientInfo;
 	char buffer[256]; // message
 	struct sockaddr_in serverAddress, clientAddress;
-	char plaintext_buffer[9999];
-	char key_buffer[9999];
+	char plaintext_buffer[99999];
+	char key_buffer[99999];
 	char cipher_buffer[p_size]; //same size as plaintext
 
 	if (argc < 2) { fprintf(stderr,"USAGE: %s port\n", argv[0]); exit(1); } // Check usage & args
@@ -47,30 +47,39 @@ int main(int argc, char *argv[])
 	// if (charsRead < 0) error("ERROR reading from socket");
 	// printf("SERVER: I received this from the client: \"%s\"\n", buffer);
 
-	// gets the int from client and display it
-	charsRead = recv(establishedConnectionFD, &p_size, sizeof(int), 0);
-	if (charsRead < 0) error("ERROR reading from socket");
-	printf("SERVER: I received the buffer length from the client: \"%d\"\n", p_size);
+	while(1) {
 
-	// get the plaintext buffer
-	//charsRead = 0;
-	while(charsRead < p_size) {
-		charsRead = recv(establishedConnectionFD, &plaintext_buffer, sizeof(plaintext_buffer), 0);
+		// gets the int from client and display it
+		charsRead = recv(establishedConnectionFD, &p_size, sizeof(int), 0);
+		if (charsRead < 0) error("ERROR reading from socket");
+		printf("SERVER: I received the buffer length from the client: \"%d\"\n", p_size);
+		fflush(stdout);
+
+		// get the plaintext buffer
+		memset(plaintext_buffer, '\0', p_size);
+		charsRead = 0;
+		while(charsRead < p_size) {
+			charsRead += recv(establishedConnectionFD, plaintext_buffer + charsRead, p_size - charsRead, 0);
+		}
+		if (charsRead < 0) error("ERROR reading from socket");
+		printf("SERVER: I received this plaintext from the client: \"%s\"\n", plaintext_buffer);
+		fflush(stdout);
+
+		// get the key buffer
+		memset(key_buffer, '\0', p_size);
+		charsRead = 0;
+		while(charsRead < p_size) {
+			charsRead += recv(establishedConnectionFD, key_buffer + charsRead, p_size - charsRead, 0);
+		}
+		if (charsRead < 0) error("ERROR reading from socket");
+		printf("SERVER: I received this key from the client: \"%s\"\n", key_buffer);
+		fflush(stdout);
+
+		// Send a Success message and cipher back to the client 
+		//charsRead = 0;
+		// charsRead = send(establishedConnectionFD, "I am the server, and I got your message", 39, 0); // Send success back
+		// if (charsRead < 0) error("ERROR writing to socket");
 	}
-	if (charsRead < 0) error("ERROR reading from socket");
-	printf("SERVER: I received this plaintext from the client: \"%s\"\n", plaintext_buffer);
-
-	// get the key buffer
-	//charsRead = 0;
-	while(charsRead < p_size) {
-		charsRead = recv(establishedConnectionFD, &key_buffer, sizeof(key_buffer), 0);
-	}
-	if (charsRead < 0) error("ERROR reading from socket");
-	printf("SERVER: I received this key from the client: \"%s\"\n", plaintext_buffer);
-
-	// Send a Success message and cipher back to the client 
-	charsRead = send(establishedConnectionFD, "I am the server, and I got your message", 39, 0); // Send success back
-	if (charsRead < 0) error("ERROR writing to socket");
 
 	close(establishedConnectionFD); // Close the existing socket which is connected to the client
 	close(listenSocketFD); // Close the listening socket
