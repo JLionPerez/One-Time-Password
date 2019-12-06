@@ -136,7 +136,7 @@ int main(int argc, char *argv[])
 		//fork
 		switch_pids(plaintext_buffer, key_buffer, cipher_buffer, &p_size, establishedConnectionFD);
 		waitpid(-1, NULL, WNOHANG);
-		
+
 		//gets information for buffers
 		//get_info(plaintext_buffer, key_buffer, &p_size, establishedConnectionFD);
 
@@ -154,6 +154,8 @@ int main(int argc, char *argv[])
 		// if (charsRead < 0) error("ERROR writing to socket");
 		
 		//break;
+
+		printf("%d children", child_counter);
 	}
 
 	// close(establishedConnectionFD); // Close the existing socket which is connected to the client
