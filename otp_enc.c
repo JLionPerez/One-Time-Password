@@ -57,6 +57,7 @@ int main(int argc, char *argv[])
 	struct hostent* serverHostInfo;
 	char* plaintext_buffer;
 	char* key_buffer;
+	char buffer[256];
     
 	// Check usage & args
 	if (argc < 3) { fprintf(stderr,"USAGE: %s hostname port\n", argv[0]); exit(0); } 
@@ -110,7 +111,7 @@ int main(int argc, char *argv[])
 	// if (charsWritten < 0) error("CLIENT: ERROR writing to socket");
 	// if (charsWritten < strlen(buffer)) printf("CLIENT: WARNING: Not all data written to socket!\n");
 
-	//handshake
+	//handshake, making sure it's connecting to right socket, in this case otp_enc -> otp_enc_d only
 
 	//send length of plaintext (no need to send key length)
 	charsWritten = send(socketFD, &p_size, sizeof(int), 0); //sends int
@@ -122,10 +123,10 @@ int main(int argc, char *argv[])
 	//send key to server
 
 	// Get return message from server
-	// memset(buffer, '\0', sizeof(buffer)); // Clear out the buffer again for reuse
-	// charsRead = recv(socketFD, buffer, sizeof(buffer) - 1, 0); // Read data from the socket, leaving \0 at end
-	// if (charsRead < 0) error("CLIENT: ERROR reading from socket");
-	// printf("CLIENT: I received this from the server: \"%s\"\n", buffer);
+	memset(buffer, '\0', sizeof(buffer)); // Clear out the buffer again for reuse
+	charsRead = recv(socketFD, buffer, sizeof(buffer) - 1, 0); // Read data from the socket, leaving \0 at end
+	if (charsRead < 0) error("CLIENT: ERROR reading from socket");
+	printf("CLIENT: I received this from the server: \"%s\"\n", buffer);
 
 	close(socketFD); // Close the socket
 	return 0;

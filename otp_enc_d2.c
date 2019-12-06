@@ -10,7 +10,7 @@ void error(const char *msg) { perror(msg); exit(1); } // Error function used for
 
 int main(int argc, char *argv[])
 {
-	int listenSocketFD, establishedConnectionFD, portNumber, charsRead;
+	int listenSocketFD, establishedConnectionFD, portNumber, charsRead, p_size;
 	socklen_t sizeOfClientInfo;
 	char buffer[256];
 	struct sockaddr_in serverAddress, clientAddress;
@@ -39,10 +39,15 @@ int main(int argc, char *argv[])
 	if (establishedConnectionFD < 0) error("ERROR on accept");
 
 	// Get the message from the client and display it
-	memset(buffer, '\0', 256);
-	charsRead = recv(establishedConnectionFD, buffer, 255, 0); // Read the client's message from the socket
+	// memset(buffer, '\0', 256);
+	// charsRead = recv(establishedConnectionFD, buffer, 255, 0); // Read the client's message from the socket
+	// if (charsRead < 0) error("ERROR reading from socket");
+	// printf("SERVER: I received this from the client: \"%s\"\n", buffer);
+
+	// gets the int from client and display it
+	charsRead = recv(establishedConnectionFD, &p_size, sizeof(int), 0);
 	if (charsRead < 0) error("ERROR reading from socket");
-	printf("SERVER: I received this from the client: \"%s\"\n", buffer);
+	printf("SERVER: I received this from the client: \"%d\"\n", p_size);
 
 	// Send a Success message back to the client
 	charsRead = send(establishedConnectionFD, "I am the server, and I got your message", 39, 0); // Send success back
