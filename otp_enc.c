@@ -127,12 +127,17 @@ int main(int argc, char *argv[])
 	// Get return message and cipher from server
 	memset(cipher_buffer, '\0', p_size);
 	charsRead = 0;
+	printf("P_size is this: %d\n", p_size);
+	fflush(stdout);
 	while(charsRead < p_size) {
 		charsRead += recv(socketFD, cipher_buffer + charsRead, p_size - charsRead, 0);
 	}
 	if (charsRead < 0) error("ERROR reading from socket");
-	fprintf(stdout,"CLIENT: I received this cipher from the server: \"%s\"\n", cipher_buffer);
+	printf("CLIENT: I received this cipher from the server: \"%s\"\n", cipher_buffer);
 	fflush(stdout);
+
+	// printf("P_size is this: %d\n", p_size);
+	// fflush(stdout);
 	//include newline in file if outputted
 
 	close(socketFD); // Close the socket
