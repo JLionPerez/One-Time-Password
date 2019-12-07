@@ -127,7 +127,7 @@ int main(int argc, char *argv[])
 	// Get return message and cipher from server
 	//memset(cipher_buffer, '\0', p_size);
 //	memset(cipher_buffer, 0, sizeof(cipher_buffer));
-	char* cipher_buffer = calloc(p_size + 1, 1);
+	char* cipher_buffer = calloc(p_size + 1, 1); //put memory in cipher, malloc and memset combined
 	charsRead = 0;
 	printf("P_size is this: %d\n", p_size);
 	fflush(stdout);

@@ -13,6 +13,7 @@ void error(const char *msg) { perror(msg); exit(1); } // Error function used for
 
 //encrypts plaintext into ciphertext
 char encrypt(char p_char, char k_char) {
+	// enum chars { A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z};
 	char c_char;
 
 	if(p_char == ' ') { p_char = '['; }
@@ -21,7 +22,7 @@ char encrypt(char p_char, char k_char) {
 	c_char = ((p_char - 65) + (k_char - 65)) % 27;
 	c_char += 65;
 
-	if(c_char == '[') { c_char == ' '; }
+	if(c_char == '[') { c_char = ' '; }
 
 	return c_char;
 }
