@@ -70,6 +70,8 @@ void send_cipher(char *cipher_buffer, int *p_size, int establishedConnectionFD) 
 		charsWritten += send(establishedConnectionFD, cipher_buffer + charsWritten, *p_size - charsWritten, 0);
 	}
 	if (charsWritten < 0) error("ERROR writing to socket");
+	printf("SERVER: sending cipher: %s\n", cipher_buffer);
+	fflush(stdout);
 }
 
 void switch_pids(char *plaintext_buffer, char *key_buffer, char *cipher_buffer, int *p_size, int establishedConnectionFD) {
@@ -95,8 +97,6 @@ void switch_pids(char *plaintext_buffer, char *key_buffer, char *cipher_buffer, 
 				cipher_buffer[i] = encrypt(plaintext_buffer[i], key_buffer[i]);
 			}
 			send_cipher(cipher_buffer, p_size, establishedConnectionFD); //sends back to server
-			printf("SERVER: sending cipher: %s\n", cipher_buffer);
-			fflush(stdout);
 
 			close(establishedConnectionFD); // Close the existing socket which is connected to the client
 			exit(0);

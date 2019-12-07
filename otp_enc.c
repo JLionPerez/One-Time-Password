@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
 	struct hostent* serverHostInfo;
 	char* plaintext_buffer;
 	char* key_buffer;
-	char cipher_buffer[p_size];
+//	char cipher_buffer[p_size + 1];
 	char buffer[256]; //message
     
 	// Check usage & args
@@ -125,7 +125,9 @@ int main(int argc, char *argv[])
 	fflush(stdout);
 
 	// Get return message and cipher from server
-	memset(cipher_buffer, '\0', p_size);
+	//memset(cipher_buffer, '\0', p_size);
+//	memset(cipher_buffer, 0, sizeof(cipher_buffer));
+	char* cipher_buffer = calloc(p_size + 1, 1);
 	charsRead = 0;
 	printf("P_size is this: %d\n", p_size);
 	fflush(stdout);
