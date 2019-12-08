@@ -41,6 +41,8 @@ bool handshake(int establishedConnectionFD) {
 		return true;
 	}
 
+	// fprintf(stderr, "Error I'm otp_enc_d otp_dec cannot use otp_enc_d.");
+	exit(2);
 	return false;
 }
 

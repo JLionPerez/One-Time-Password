@@ -62,6 +62,8 @@ bool handshake(int socketFD) {
 		return true;
 	}
 
+	fprintf(stderr, "Error otp_dec cannot use otp_enc_d.");
+	exit(2);
 	return false;
 }
 
