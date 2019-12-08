@@ -1,3 +1,9 @@
+/*
+* Title: Program 4 - OTP (otp_enc.c)
+* Description: sends information to server to encrypt and recieve back cipher
+* Author: Joelle Perez
+* Date: 7 December 2019
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -8,17 +14,27 @@
 #include <netinet/in.h>
 #include <netdb.h> 
 
-// Error function used for reporting issues
+/*
+* Function name: error()
+* Purpose: sends an error to report issues
+* Arguments: const char *
+* Returns: none
+*/
 void error(const char *msg) { perror(msg); exit(0); }
 
-//put file contents into buffers and returns length of buffer
+/*
+* Function name: buffer_size()
+* Purpose: put file contents into buffers and returns length of buffer
+* Arguments: char *[], char *
+* Returns: int
+*/
 int buffer_size(char* buffer[], char* file_name) {
 	FILE* fp; 
 	int b_length = 0; 
 	size_t buffer_length = 0;
 
-	fp = fopen(file_name, "r");
-	getline(buffer, &buffer_length, fp);
+	fp = fopen(file_name, "r"); //opends file
+	getline(buffer, &buffer_length, fp); //reads file
 
 	b_length = strlen(*buffer);
 
@@ -26,16 +42,21 @@ int buffer_size(char* buffer[], char* file_name) {
 	return b_length;
 }
 
-//checks if buffer has all valid chars including spaces and returns bool
+/*
+* Function name: valid_buffer()
+* Purpose: checks if buffer has all valid chars including spaces and returns bool
+* Arguments: char *, int
+* Returns: boolean
+*/
 bool valid_buffer(char* buffer, int length) {
 	int i, counter = 0;
 
 	for(i = 0; i < length; i++) {
-		if((buffer[i] >= 'A') && (buffer[i] <= 'Z')) {
+		if((buffer[i] >= 'A') && (buffer[i] <= 'Z')) { //needs to be within A-Z
 			counter++;
 		}
 
-		else if(buffer[i] == ' ') {
+		else if(buffer[i] == ' ') { //or space
 			counter++;
 		}
 	}
@@ -47,26 +68,36 @@ bool valid_buffer(char* buffer, int length) {
 	return false;
 }
 
-//checks if connected to the right server
+/*
+* Function name: handshake()
+* Purpose: checks if connected to the right server
+* Arguments: int
+* Returns: boolean
+*/
 bool handshake(int socketFD) {
 	char sends = 'e', receives;
 	int ret;
 
-	while((ret = recv(socketFD, &receives, 1, 0)) == 0) {}
+	while((ret = recv(socketFD, &receives, 1, 0)) == 0) {} //gets char
 	if(ret < 0) exit(1);
 
-	while((ret = send(socketFD, &sends, 1, 0)) == 0) {}
+	while((ret = send(socketFD, &sends, 1, 0)) == 0) {} //sends char
 	if(ret < 0) exit(1);
 
-	if (receives == sends) {
+	if (receives == sends) { //compares chars
 		return true;
 	}
 
-	// fprintf(stderr, "Error otp_enc cannot use otp_dec_d.");
 	exit(2);
 	return false;
 }
 
+/*
+* Function name: send_buffers()
+* Purpose: sends information to server to encrypt
+* Arguments: char *, int *, int
+* Returns: none
+*/
 void send_buffers(char *plaintext_buffer, char *key_buffer, int *p_size, int *k_size, int socketFD) {
 	int charsWritten = 0, charsRead = 0;
 
@@ -113,7 +144,6 @@ int main(int argc, char *argv[]) {
 	struct hostent* serverHostInfo;
 	char* plaintext_buffer;
 	char* key_buffer;
-	char buffer[256]; //message
     
 	// Check usage & args
 	if (argc < 3) { fprintf(stderr,"USAGE: %s hostname port\n", argv[0]); exit(0); } 

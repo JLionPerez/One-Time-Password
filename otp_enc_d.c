@@ -1,3 +1,9 @@
+/*
+* Title: Program 4 - OTP (otp_enc_d.c)
+* Description: encrypts information received from the client and sends back cipher
+* Author: Joelle Perez
+* Date: 7 December 2019
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,9 +15,20 @@
 
 int child_counter = 0;
 
+/*
+* Function name: error()
+* Purpose: sends an error to report issues
+* Arguments: const char *
+* Returns: none
+*/
 void error(const char *msg) { perror(msg); exit(1); } // Error function used for reporting issues
 
-//encrypts plaintext into ciphertext
+/*
+* Function name: encrypt()
+* Purpose: encrypts plaintext into ciphertext
+* Arguments: chars
+* Returns: char
+*/
 char encrypt(char p_char, char k_char) {
 	char c_char;
 
@@ -26,7 +43,12 @@ char encrypt(char p_char, char k_char) {
 	return c_char;
 }
 
-//checks if connected to the right server
+/*
+* Function name: handshake()
+* Purpose: checks if server is connected to the right client
+* Arguments: int
+* Returns: boolean
+*/
 bool handshake(int establishedConnectionFD) {
 	char sends = 'e', receives;
 	int ret;
@@ -41,12 +63,16 @@ bool handshake(int establishedConnectionFD) {
 		return true;
 	}
 
-	// fprintf(stderr, "Error I'm otp_enc_d otp_dec cannot use otp_enc_d.");
 	exit(2);
 	return false;
 }
 
-//gets information for size, plaintext, and key
+/*
+* Function name: get_info()
+* Purpose: gets information for size, plaintext, and key for later use
+* Arguments: char *, int *, int
+* Returns: none
+*/
 void get_info(char *plaintext_buffer, char *key_buffer, int *p_size, int establishedConnectionFD) {
 	int charsRead;
 	// gets the int from client and display it
@@ -70,7 +96,12 @@ void get_info(char *plaintext_buffer, char *key_buffer, int *p_size, int establi
 	if (charsRead < 0) error("SERVER: ERROR reading from socket");	
 }
 
-//sends cipher
+/*
+* Function name: send_cipher()
+* Purpose: send cipher back to client
+* Arguments: char *, int *, int
+* Returns: none
+*/
 void send_cipher(char *cipher_buffer, int *p_size, int establishedConnectionFD) {
 	int charsWritten = 0;
 
@@ -80,6 +111,12 @@ void send_cipher(char *cipher_buffer, int *p_size, int establishedConnectionFD) 
 	if (charsWritten < 0) error("SERVER: ERROR writing to socket");
 }
 
+/*
+* Function name: switch_pids()
+* Purpose: forks for each process to decrypt each instance
+* Arguments: char *, int *, int
+* Returns: none
+*/
 void switch_pids(char *plaintext_buffer, char *key_buffer, char *cipher_buffer, int *p_size, int establishedConnectionFD) {
 	pid_t spawnpid = fork();
 
@@ -96,7 +133,7 @@ void switch_pids(char *plaintext_buffer, char *key_buffer, char *cipher_buffer, 
 				//gets information for buffers
 				get_info(plaintext_buffer, key_buffer, p_size, establishedConnectionFD);
 
-				//encrypt
+				//encrypt, input each char into buffer
 				int i;
 				for(i = 0; i < *p_size; i++) {
 					cipher_buffer[i] = encrypt(plaintext_buffer[i], key_buffer[i]);
@@ -122,7 +159,6 @@ void switch_pids(char *plaintext_buffer, char *key_buffer, char *cipher_buffer, 
 int main(int argc, char *argv[]) {
 	int listenSocketFD, establishedConnectionFD, portNumber, p_size;
 	socklen_t sizeOfClientInfo;
-	char buffer[256]; // message
 	struct sockaddr_in serverAddress, clientAddress;
 	char plaintext_buffer[99999];
 	char key_buffer[99999];
@@ -151,15 +187,11 @@ int main(int argc, char *argv[]) {
 
 	while(1) {
 
-		// if(child_counter > 5) {
-		// 	break;
-		// }
-
 		// Accept a connection, blocking if one is not available until one connects
 		establishedConnectionFD = accept(listenSocketFD, (struct sockaddr *)&clientAddress, &sizeOfClientInfo); // Accept
 		if (establishedConnectionFD < 0) error("SERVER: ERROR on accept");
 
-		//fork
+		//fork, continue to encryption
 		switch_pids(plaintext_buffer, key_buffer, cipher_buffer, &p_size, establishedConnectionFD);
 		waitpid(-1, NULL, WNOHANG);
 	}

@@ -1,3 +1,10 @@
+/*
+* Title: Program 4 - OTP (otp_dec_d.c)
+* Description: Decrypts ciphertext being sent by client using key
+* Author: Joelle Perez
+* Date: 7 December 2019
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,53 +16,74 @@
 
 int child_counter = 0;
 
-void error(const char *msg) { perror(msg); exit(1); } // Error function used for reporting issues
+/*
+* Function name: error()
+* Purpose: sends an error to report issues
+* Arguments: const char *
+* Returns: none
+*/
+void error(const char *msg) { perror(msg); exit(1); } 
 
-//decrypts ciphertext into plaintext
+/*
+* Function name: decrypt()
+* Purpose: decrypts ciphertext into plaintext
+* Arguments: chars
+* Returns: char
+*/
 char decrypt(char c_char, char k_char) {
 	char p_char;
 
-	if(c_char == ' ') { c_char = '['; }
+	if(c_char == ' ') { c_char = '['; } //be in scope of chars of 27
 	if(k_char == ' ') { k_char = '['; }
 
     if(c_char < k_char) {
-        p_char = (((c_char) - (k_char)) + 27) % 27;
+        p_char = (((c_char) - (k_char)) + 27) % 27; //making sure mod isn't negative
         p_char += 65;
     }
 
     else {
-        p_char = ((c_char - 65) - (k_char - 65)) % 27;
+        p_char = ((c_char - 65) - (k_char - 65)) % 27; //run normally
         p_char += 65;
     }
 
-    if(p_char == '[') { p_char = ' '; }
+    if(p_char == '[') { p_char = ' '; } //use spaces
 
 	return p_char;
 }
 
-//checks if connected to the right server
+/*
+* Function name: handshake()
+* Purpose: checks if server is connected to the right client
+* Arguments: int
+* Returns: boolean
+*/
 bool handshake(int establishedConnectionFD) {
 	char sends = 'd', receives;
 	int ret;
 
-	while((ret = send(establishedConnectionFD, &sends, 1, 0)) == 0) {}
+	while((ret = send(establishedConnectionFD, &sends, 1, 0)) == 0) {} //send char
 	if(ret < 0) exit(1);
 
-	while((ret = recv(establishedConnectionFD, &receives, 1, 0)) == 0) {}
+	while((ret = recv(establishedConnectionFD, &receives, 1, 0)) == 0) {} //recieve char
 	if(ret < 0) exit(1);
 
-	if (receives == sends) {
+	if (receives == sends) { //compare if they're the same
 		return true;
 	}
 
-	// fprintf(stderr, "Error otp_dec_d cannot use otp_enc.");
 	exit(2);
 	return false;
 }
 
-//gets information for size, plaintext, and key
+/*
+* Function name: get_info()
+* Purpose: gets information for size, cipher, and key for later use
+* Arguments: char *, int *, int
+* Returns: none
+*/
 void get_info(char *cipher_buffer, char *key_buffer, int *p_size, int establishedConnectionFD) {
 	int charsRead;
+
 	// gets the int from client and display it
 	charsRead = recv(establishedConnectionFD, p_size, sizeof(int), 0);
 	if (charsRead < 0) error("SERVER: ERROR reading from socket");
@@ -77,7 +105,12 @@ void get_info(char *cipher_buffer, char *key_buffer, int *p_size, int establishe
 	if (charsRead < 0) error("SERVER: ERROR reading from socket");	
 }
 
-//sends plaintext
+/*
+* Function name: send_plaintext()
+* Purpose: send plaintext back to client
+* Arguments: char *, int *, int
+* Returns: none
+*/
 void send_plaintext(char *plaintext_buffer, int *p_size, int establishedConnectionFD) {
 	int charsWritten = 0;
 
@@ -87,6 +120,12 @@ void send_plaintext(char *plaintext_buffer, int *p_size, int establishedConnecti
 	if (charsWritten < 0) error("SERVER: ERROR writing to socket");
 }
 
+/*
+* Function name: switch_pids()
+* Purpose: forks for each process to decrypt each instance
+* Arguments: char *, int *, int
+* Returns: none
+*/
 void switch_pids(char *plaintext_buffer, char *key_buffer, char *cipher_buffer, int *p_size, int establishedConnectionFD) {
 	pid_t spawnpid = fork();
 
@@ -103,7 +142,7 @@ void switch_pids(char *plaintext_buffer, char *key_buffer, char *cipher_buffer, 
 				//gets information for buffers
 				get_info(cipher_buffer, key_buffer, p_size, establishedConnectionFD);
 
-				//encrypt
+				//decrypt, input each char into buffer
 				int i;
 				for(i = 0; i < *p_size; i++) {
 					plaintext_buffer[i] = decrypt(cipher_buffer[i], key_buffer[i]);
@@ -116,11 +155,11 @@ void switch_pids(char *plaintext_buffer, char *key_buffer, char *cipher_buffer, 
 			break;
 		
 		default: //parent
-			child_counter++;
+			child_counter++; //increase body count
 
 			if(child_counter == 5) {
 				waitpid(-1, NULL, 0);
-				child_counter--;
+				child_counter--; //bury evidence
 				while (waitpid(-1, NULL, WNOHANG) > 0) child_counter--;
 			}
     }
@@ -129,7 +168,6 @@ void switch_pids(char *plaintext_buffer, char *key_buffer, char *cipher_buffer, 
 int main(int argc, char *argv[]) {
 	int listenSocketFD, establishedConnectionFD, portNumber, p_size;
 	socklen_t sizeOfClientInfo;
-	char buffer[256]; // message
 	struct sockaddr_in serverAddress, clientAddress;
 	char cipher_buffer[99999];
 	char key_buffer[99999];
@@ -158,15 +196,11 @@ int main(int argc, char *argv[]) {
 
 	while(1) {
 
-		if(child_counter > 5) {
-			break;
-		}
-
 		// Accept a connection, blocking if one is not available until one connects
 		establishedConnectionFD = accept(listenSocketFD, (struct sockaddr *)&clientAddress, &sizeOfClientInfo); // Accept
 		if (establishedConnectionFD < 0) error("SERVER: ERROR on accept");
 
-		//fork
+		//fork, continue to decryption
 		switch_pids(plaintext_buffer, key_buffer, cipher_buffer, &p_size, establishedConnectionFD);
 		waitpid(-1, NULL, WNOHANG);
 	}

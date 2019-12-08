@@ -1,7 +1,7 @@
-# Title: Program 4 - OTP (keygen.c)
-# Description: Generates key
+# Title: Program 4 - OTP (compileall)
+# Description: Compiles all files
 # Author: Joelle Perez
-# Date: 6 December 2019
+# Date: 7 December 2019
 
 gcc -g -o keygen keygen.c
 gcc -g -o otp_dec_d otp_dec_d.c

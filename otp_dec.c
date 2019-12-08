@@ -1,3 +1,9 @@
+/*
+* Title: Program 4 - OTP (otp_dec.c)
+* Description: sends information to server to decrypt and receives plaintext
+* Author: Joelle Perez
+* Date: 7 December 2019
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -8,10 +14,20 @@
 #include <netinet/in.h>
 #include <netdb.h> 
 
-// Error function used for reporting issues
+/*
+* Function name: error()
+* Purpose: sends an error to report issues
+* Arguments: const char *
+* Returns: none
+*/
 void error(const char *msg) { perror(msg); exit(0); }
 
-//put file contents into buffers and returns length of buffer
+/*
+* Function name: buffer_size()
+* Purpose: put file contents into buffers and returns length of buffer
+* Arguments: char *[], char *
+* Returns: int
+*/
 int buffer_size(char* buffer[], char* file_name) {
 	FILE* fp; 
 	int b_length = 0; 
@@ -26,7 +42,12 @@ int buffer_size(char* buffer[], char* file_name) {
 	return b_length;
 }
 
-//checks if buffer has all valid chars including spaces and returns bool
+/*
+* Function name: valid_buffer()
+* Purpose: checks if buffer has all valid chars including spaces and returns bool
+* Arguments: char *, int
+* Returns: boolean
+*/
 bool valid_buffer(char* buffer, int length) {
 	int i, counter = 0;
 
@@ -47,7 +68,12 @@ bool valid_buffer(char* buffer, int length) {
 	return false;
 }
 
-//checks if connected to the right server
+/*
+* Function name: handshake()
+* Purpose: checks if connected to the right server
+* Arguments: int
+* Returns: boolean
+*/
 bool handshake(int socketFD) {
 	char sends = 'd', receives;
 	int ret;
@@ -67,6 +93,12 @@ bool handshake(int socketFD) {
 	return false;
 }
 
+/*
+* Function name: send_buffers()
+* Purpose: sends information to server to decrypt
+* Arguments: char *, int *, int
+* Returns: none
+*/
 void send_buffers(char *cipher_buffer, char *key_buffer, int *p_size, int *k_size, int socketFD) {
 	int charsWritten = 0, charsRead = 0;
 
@@ -113,7 +145,6 @@ int main(int argc, char *argv[]) {
 	struct hostent* serverHostInfo;
 	char* cipher_buffer;
 	char* key_buffer;
-	char buffer[256]; //message
     
 	// Check usage & args
 	if (argc < 3) { fprintf(stderr,"USAGE: %s hostname port\n", argv[0]); exit(0); } 
