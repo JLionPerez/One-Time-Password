@@ -13,7 +13,6 @@ void error(const char *msg) { perror(msg); exit(1); } // Error function used for
 
 //encrypts plaintext into ciphertext
 char encrypt(char p_char, char k_char) {
-	// enum chars { A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z};
 	char c_char;
 
 	if(p_char == ' ') { p_char = '['; }
@@ -25,6 +24,25 @@ char encrypt(char p_char, char k_char) {
 	if(c_char == '[') { c_char = ' '; }
 
 	return c_char;
+}
+
+//checks if connected to the right server
+bool handshake(int establishedConnectionFD) {
+	int charsRead, charsWritten, sent = 3, received;
+
+	charsWritten = send(establishedConnectionFD, &sent, sizeof(int), 0); //sends int
+	if (charsWritten < 0) error("CLIENT: ERROR writing to socket");
+	fflush(stdout);
+
+	charsRead = recv(establishedConnectionFD, &received, sizeof(int), 0);
+	if (charsRead < 0) error("ERROR not receiving handshake");
+	printf("SERVER: I received this handshake from the client: \"%d\"\n", received);
+
+	if (received == sent) {
+		return true;
+	}
+
+	return false;
 }
 
 //gets information for size, plaintext, and key
@@ -61,6 +79,7 @@ void get_info(char *plaintext_buffer, char *key_buffer, int *p_size, int establi
 	fflush(stdout);	
 }
 
+//sends cipher
 void send_cipher(char *cipher_buffer, int *p_size, int establishedConnectionFD) {
 	int charsWritten = 0;
 
@@ -87,17 +106,17 @@ void switch_pids(char *plaintext_buffer, char *key_buffer, char *cipher_buffer, 
 			
 		case 0: //child
 
-			//gets information for buffers
-			get_info(plaintext_buffer, key_buffer, p_size, establishedConnectionFD);
-			// printf("P_size: %d\n", *p_size);
-			// fflush(stdout);
+			//if(handshake) {
+				//gets information for buffers
+				get_info(plaintext_buffer, key_buffer, p_size, establishedConnectionFD);
 
-			//encrypt
-			int i;
-			for(i = 0; i < *p_size; i++) {
-				cipher_buffer[i] = encrypt(plaintext_buffer[i], key_buffer[i]);
-			}
-			send_cipher(cipher_buffer, p_size, establishedConnectionFD); //sends back to server
+				//encrypt
+				int i;
+				for(i = 0; i < *p_size; i++) {
+					cipher_buffer[i] = encrypt(plaintext_buffer[i], key_buffer[i]);
+				}
+				send_cipher(cipher_buffer, p_size, establishedConnectionFD); //sends back to server
+			//}
 
 			close(establishedConnectionFD); // Close the existing socket which is connected to the client
 			exit(0);
