@@ -49,50 +49,60 @@ bool valid_buffer(char* buffer, int length) {
 
 //checks if connected to the right server
 bool handshake(int socketFD) {
-	int charsRead, charsWritten, sent = 3, received;
+	char sends = 'e', receives;
+	int ret;
 
-	charsWritten = send(socketFD, &sent, sizeof(int), 0); //sends int
-	if (charsWritten < 0) error("CLIENT: ERROR writing to socket");
-	fflush(stdout);
+	while((ret = recv(socketFD, &receives, 1, 0)) == 0) {}
+	if(ret < 0) exit(1);
 
-	charsRead = recv(socketFD, &received, sizeof(int), 0);
-	if (charsRead < 0) error("ERROR not receiving handshake");
-	printf("CLIENT: I received this handshake from the client: \"%d\"\n", received);
+	while((ret = send(socketFD, &sends, 1, 0)) == 0) {}
+	if(ret < 0) exit(1);
 
-	if (received == sent) {
+	if (receives == sends) {
 		return true;
 	}
 
 	return false;
 }
 
-// void get_buffers_ready(char *plaintext_buffer, char *key_buffer, int *p_size, int *k_size) {
-// 	//GET BUFFERS READY
-// 	//get the sizes including newline
-// 	bool p_flag, k_flag;
+void send_buffers(char *plaintext_buffer, char *key_buffer, int *p_size, int *k_size, int socketFD) {
+	int charsWritten = 0, charsRead = 0;
 
-// 	// p_size = buffer_size(&plaintext_buffer, argv[1]);
-// 	// k_size = buffer_size(&key_buffer, argv[2]);
+	//send length of plaintext (no need to send key length)
+	charsWritten = send(socketFD, p_size, sizeof(int), 0); //sends int
+	if (charsWritten < 0) error("CLIENT: ERROR writing to socket");
+	fflush(stdout);
 
-// 	//get rid of newlines
-// 	plaintext_buffer[strcspn(plaintext_buffer, "\n")] = '\0';
-// 	key_buffer[strcspn(key_buffer, "\n")] = '\0';
-// 	p_size--; //reduce for no newline
-// 	k_size--; 
+	//send plaintext to server
+	charsWritten = 0;
+	while(charsWritten < *p_size) {
+		charsWritten += send(socketFD, plaintext_buffer + charsWritten, *p_size - charsWritten, 0);
+	}
+	if (charsWritten < 0) error("CLIENT: ERROR plaintext writing to socket");
+	if (charsWritten < *p_size) { printf("CLIENT: WARNING: Not all data written to socket!\n"); fflush(stdout); }
+	fflush(stdout);
 
-// 	//checks for bad characters
-// 	p_flag = valid_buffer(plaintext_buffer, *p_size); //plaintext
-// 	k_flag = valid_buffer(key_buffer, *k_size);	//key
+	//send key to server
+	charsWritten = 0;
+	while(charsWritten < *k_size) {
+		charsWritten += send(socketFD, key_buffer + charsWritten, *k_size - charsWritten, 0);
+	}
+	if (charsWritten < 0) error("CLIENT: ERROR key writing to socket");
+	if (charsWritten < *k_size) { printf("CLIENT: WARNING: Not all data written to socket!\n"); fflush(stdout); }
+	fflush(stdout);
 
-// 	//checks if key file is bigger or equal to plaintext
-// 	if(p_size > k_size) { fprintf(stderr, "Error: key ‘%s’ is too short\n", argv[2]); exit(1); }
+	// Get cipher from server
+	char* cipher_buffer = calloc(*p_size + 1, 1); //put memory in cipher, malloc and memset combined
+	charsRead = 0;
 
-// 	//checks if all characters are valid
-// 	if((!p_flag) || (!k_flag)) { fprintf(stderr, "otp_enc error: input contains bad characters\n"); exit(1); }	
-// }
+	while(charsRead < *p_size) {
+		charsRead += recv(socketFD, cipher_buffer + charsRead, *p_size - charsRead, 0);
+	}
+	if (charsRead < 0) error("CLIENT: ERROR reading from socket");
+	fprintf(stdout, "%s\n", cipher_buffer);
+}
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
 	int socketFD, charsWritten = 0, charsRead = 0;
 	int portNumber = atoi(argv[3]);
 	int p_size, k_size;
@@ -145,40 +155,7 @@ int main(int argc, char *argv[])
 		error("CLIENT: ERROR connecting");
 
 	if(handshake(socketFD)) {
-		//send length of plaintext (no need to send key length)
-		charsWritten = send(socketFD, &p_size, sizeof(int), 0); //sends int
-		if (charsWritten < 0) error("CLIENT: ERROR writing to socket");
-		fflush(stdout);
-
-		//send plaintext to server
-		charsWritten = 0;
-		while(charsWritten < p_size) {
-			charsWritten += send(socketFD, plaintext_buffer + charsWritten, p_size - charsWritten, 0);
-		}
-		if (charsWritten < 0) error("CLIENT: ERROR plaintext writing to socket");
-		if (charsWritten < p_size) { printf("CLIENT: WARNING: Not all data written to socket!\n"); fflush(stdout); }
-		fflush(stdout);
-
-		//send key to server
-		charsWritten = 0;
-		while(charsWritten < k_size) {
-			charsWritten += send(socketFD, key_buffer + charsWritten, k_size - charsWritten, 0);
-		}
-		if (charsWritten < 0) error("CLIENT: ERROR key writing to socket");
-		if (charsWritten < k_size) { printf("CLIENT: WARNING: Not all data written to socket!\n"); fflush(stdout); }
-		fflush(stdout);
-
-		// Get return message and cipher from server
-		char* cipher_buffer = calloc(p_size + 1, 1); //put memory in cipher, malloc and memset combined
-		charsRead = 0;
-		// printf("P_size is this: %d\n", p_size);
-		// fflush(stdout);
-		while(charsRead < p_size) {
-			charsRead += recv(socketFD, cipher_buffer + charsRead, p_size - charsRead, 0);
-		}
-		if (charsRead < 0) error("CLIENT: ERROR reading from socket");
-		printf("CLIENT: I received this cipher from the server: \"%s\"\n", cipher_buffer);
-		fflush(stdout);
+		send_buffers(plaintext_buffer, key_buffer, &p_size, &k_size, socketFD);
 	}
 
 	close(socketFD); // Close the socket
