@@ -31,7 +31,7 @@ bool handshake(int establishedConnectionFD) {
 	int charsRead, charsWritten, sent = 3, received;
 
 	charsWritten = send(establishedConnectionFD, &sent, sizeof(int), 0); //sends int
-	if (charsWritten < 0) error("CLIENT: ERROR writing to socket");
+	if (charsWritten < 0) error("SERVER: ERROR writing to socket");
 	fflush(stdout);
 
 	charsRead = recv(establishedConnectionFD, &received, sizeof(int), 0);
@@ -50,7 +50,7 @@ void get_info(char *plaintext_buffer, char *key_buffer, int *p_size, int establi
 	int charsRead;
 	// gets the int from client and display it
 	charsRead = recv(establishedConnectionFD, p_size, sizeof(int), 0);
-	if (charsRead < 0) error("ERROR reading from socket");
+	if (charsRead < 0) error("SERVER: ERROR reading from socket");
 	printf("SERVER: I received the buffer length from the client: \"%d\"\n", *p_size);
 	fflush(stdout);
 
@@ -62,7 +62,7 @@ void get_info(char *plaintext_buffer, char *key_buffer, int *p_size, int establi
 	while(charsRead < *p_size) {
 		charsRead += recv(establishedConnectionFD, plaintext_buffer + charsRead, *p_size - charsRead, 0);
 	}
-	if (charsRead < 0) error("ERROR reading from socket");
+	if (charsRead < 0) error("SERVER: ERROR reading from socket");
 	printf("SERVER: I received this plaintext from the client: \"%s\"\n", plaintext_buffer);
 	fflush(stdout);
 
@@ -74,7 +74,7 @@ void get_info(char *plaintext_buffer, char *key_buffer, int *p_size, int establi
 	while(charsRead < *p_size) {
 		charsRead += recv(establishedConnectionFD, key_buffer + charsRead, *p_size - charsRead, 0);
 	}
-	if (charsRead < 0) error("ERROR reading from socket");
+	if (charsRead < 0) error("SERVER: ERROR reading from socket");
 	printf("SERVER: I received this key from the client: \"%s\"\n", key_buffer);
 	fflush(stdout);	
 }
@@ -89,7 +89,7 @@ void send_cipher(char *cipher_buffer, int *p_size, int establishedConnectionFD) 
 	while(charsWritten < *p_size) {
 		charsWritten += send(establishedConnectionFD, cipher_buffer + charsWritten, *p_size - charsWritten, 0);
 	}
-	if (charsWritten < 0) error("ERROR writing to socket");
+	if (charsWritten < 0) error("SERVER: ERROR writing to socket");
 	printf("SERVER: sending cipher: %s\n", cipher_buffer);
 	fflush(stdout);
 }
@@ -100,13 +100,13 @@ void switch_pids(char *plaintext_buffer, char *key_buffer, char *cipher_buffer, 
 	switch(spawnpid)
 	{
 		case -1: //error
-				perror("error fork gone wrong");
+				perror("SERVER: error fork gone wrong");
 				exit(1);
 				break;
 			
 		case 0: //child
 
-			//if(handshake) {
+			//if(handshake(establishedConnectionFD)) {
 				//gets information for buffers
 				get_info(plaintext_buffer, key_buffer, p_size, establishedConnectionFD);
 
@@ -154,11 +154,11 @@ int main(int argc, char *argv[])
 
 	// Set up the socket
 	listenSocketFD = socket(AF_INET, SOCK_STREAM, 0); // Create the socket
-	if (listenSocketFD < 0) error("ERROR opening socket");
+	if (listenSocketFD < 0) error("SERVER: ERROR opening socket");
 
 	// Enable the socket to begin listening
 	if (bind(listenSocketFD, (struct sockaddr *)&serverAddress, sizeof(serverAddress)) < 0) // Connect socket to port
-		error("ERROR on binding");
+		error("SERVER: ERROR on binding");
 	listen(listenSocketFD, 5); // Flip the socket on - it can now receive up to 5 connections
 
 	// Accept a connection, blocking if one is not available until one connects
@@ -172,15 +172,15 @@ int main(int argc, char *argv[])
 
 		// Accept a connection, blocking if one is not available until one connects
 		establishedConnectionFD = accept(listenSocketFD, (struct sockaddr *)&clientAddress, &sizeOfClientInfo); // Accept
-		if (establishedConnectionFD < 0) error("ERROR on accept");
+		if (establishedConnectionFD < 0) error("SERVER: ERROR on accept");
 		// child_counter++;
 
 		//fork
 		switch_pids(plaintext_buffer, key_buffer, cipher_buffer, &p_size, establishedConnectionFD);
 		waitpid(-1, NULL, WNOHANG);
 
-		printf("%dth children\n", child_counter);
-		fflush(stdout);
+		// printf("%dth children\n", child_counter);
+		// fflush(stdout);
 	}
 
 	// close(establishedConnectionFD); // Close the existing socket which is connected to the client

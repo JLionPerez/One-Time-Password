@@ -48,23 +48,23 @@ bool valid_buffer(char* buffer, int length) {
 }
 
 //checks if connected to the right server
-// bool handshake(int establishedConnectionFD) {
-// 	int charsRead, charsWritten, sent = 3, received;
+bool handshake(int socketFD) {
+	int charsRead, charsWritten, sent = 3, received;
 
-// 	charsWritten = send(establishedConnectionFD, &sent, sizeof(int), 0); //sends int
-// 	if (charsWritten < 0) error("CLIENT: ERROR writing to socket");
-// 	fflush(stdout);
+	charsWritten = send(socketFD, &sent, sizeof(int), 0); //sends int
+	if (charsWritten < 0) error("CLIENT: ERROR writing to socket");
+	fflush(stdout);
 
-// 	charsRead = recv(establishedConnectionFD, &received, sizeof(int), 0);
-// 	if (charsRead < 0) error("ERROR not receiving handshake");
-// 	printf("SERVER: I received this handshake from the client: \"%d\"\n", received);
+	charsRead = recv(socketFD, &received, sizeof(int), 0);
+	if (charsRead < 0) error("ERROR not receiving handshake");
+	printf("CLIENT: I received this handshake from the client: \"%d\"\n", received);
 
-// 	if (received == sent) {
-// 		return true;
-// 	}
+	if (received == sent) {
+		return true;
+	}
 
-// 	return false;
-// }
+	return false;
+}
 
 // void get_buffers_ready(char *plaintext_buffer, char *key_buffer, int *p_size, int *k_size) {
 // 	//GET BUFFERS READY
@@ -128,23 +128,23 @@ int main(int argc, char *argv[])
 	if((!p_flag) || (!k_flag)) { fprintf(stderr, "otp_enc error: input contains bad characters\n"); exit(1); }
 
 	//GET SENDING READY
+	// Set up the server address struct
+	memset((char*)&serverAddress, '\0', sizeof(serverAddress)); // Clear out the address struct
+	serverAddress.sin_family = AF_INET; // Create a network-capable socket
+	serverAddress.sin_port = htons(portNumber); // Store the port number
+	serverHostInfo = gethostbyname("localhost"); // Convert the machine name into a special form of address
+	if (serverHostInfo == NULL) { fprintf(stderr, "CLIENT: ERROR, no such host\n"); exit(0); }
+	memcpy((char*)&serverAddress.sin_addr.s_addr, (char*)serverHostInfo->h_addr, serverHostInfo->h_length); // Copy in the address
+
+	// Set up the socket
+	socketFD = socket(AF_INET, SOCK_STREAM, 0); // Create the socket
+	if (socketFD < 0) error("CLIENT: ERROR opening socket");
 	
-		// Set up the server address struct
-		memset((char*)&serverAddress, '\0', sizeof(serverAddress)); // Clear out the address struct
-		serverAddress.sin_family = AF_INET; // Create a network-capable socket
-		serverAddress.sin_port = htons(portNumber); // Store the port number
-		serverHostInfo = gethostbyname("localhost"); // Convert the machine name into a special form of address
-		if (serverHostInfo == NULL) { fprintf(stderr, "CLIENT: ERROR, no such host\n"); exit(0); }
-		memcpy((char*)&serverAddress.sin_addr.s_addr, (char*)serverHostInfo->h_addr, serverHostInfo->h_length); // Copy in the address
+	// Connect to server
+	if (connect(socketFD, (struct sockaddr*)&serverAddress, sizeof(serverAddress)) < 0) // Connect socket to address
+		error("CLIENT: ERROR connecting");
 
-		// Set up the socket
-		socketFD = socket(AF_INET, SOCK_STREAM, 0); // Create the socket
-		if (socketFD < 0) error("CLIENT: ERROR opening socket");
-		
-		// Connect to server
-		if (connect(socketFD, (struct sockaddr*)&serverAddress, sizeof(serverAddress)) < 0) // Connect socket to address
-			error("CLIENT: ERROR connecting");
-
+	if(handshake(socketFD)) {
 		//send length of plaintext (no need to send key length)
 		charsWritten = send(socketFD, &p_size, sizeof(int), 0); //sends int
 		if (charsWritten < 0) error("CLIENT: ERROR writing to socket");
@@ -171,14 +171,15 @@ int main(int argc, char *argv[])
 		// Get return message and cipher from server
 		char* cipher_buffer = calloc(p_size + 1, 1); //put memory in cipher, malloc and memset combined
 		charsRead = 0;
-		printf("P_size is this: %d\n", p_size);
-		fflush(stdout);
+		// printf("P_size is this: %d\n", p_size);
+		// fflush(stdout);
 		while(charsRead < p_size) {
 			charsRead += recv(socketFD, cipher_buffer + charsRead, p_size - charsRead, 0);
 		}
-		if (charsRead < 0) error("ERROR reading from socket");
+		if (charsRead < 0) error("CLIENT: ERROR reading from socket");
 		printf("CLIENT: I received this cipher from the server: \"%s\"\n", cipher_buffer);
 		fflush(stdout);
+	}
 
 	close(socketFD); // Close the socket
 	return 0;
