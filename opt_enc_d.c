@@ -1,10 +1,9 @@
 /*
-* Title: Program 4 - OTP (otp_dec_d.c)
-* Description: Decrypts ciphertext being sent by client using key
+* Title: Program 4 - OTP (otp_enc_d.c)
+* Description: encrypts information received from the client and sends back cipher
 * Author: Joelle Perez
 * Date: 7 December 2019
 */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -22,33 +21,26 @@ int child_counter = 0;
 * Arguments: const char *
 * Returns: none
 */
-void error(const char *msg) { perror(msg); exit(1); } 
+void error(const char *msg) { perror(msg); exit(1); } // Error function used for reporting issues
 
 /*
-* Function name: decrypt()
-* Purpose: decrypts ciphertext into plaintext
+* Function name: encrypt()
+* Purpose: encrypts plaintext into ciphertext
 * Arguments: chars
 * Returns: char
 */
-char decrypt(char c_char, char k_char) {
-	char p_char;
+char encrypt(char p_char, char k_char) {
+	char c_char;
 
-	if(c_char == ' ') { c_char = '['; } //be in scope of chars of 27
+	if(p_char == ' ') { p_char = '['; }
 	if(k_char == ' ') { k_char = '['; }
 
-    if(c_char < k_char) {
-        p_char = (((c_char) - (k_char)) + 27) % 27; //making sure mod isn't negative
-        p_char += 65;
-    }
+	c_char = ((p_char - 65) + (k_char - 65)) % 27;
+	c_char += 65;
 
-    else {
-        p_char = ((c_char - 65) - (k_char - 65)) % 27; //run normally
-        p_char += 65;
-    }
+	if(c_char == '[') { c_char = ' '; }
 
-    if(p_char == '[') { p_char = ' '; } //use spaces
-
-	return p_char;
+	return c_char;
 }
 
 /*
@@ -58,16 +50,16 @@ char decrypt(char c_char, char k_char) {
 * Returns: boolean
 */
 bool handshake(int establishedConnectionFD) {
-	char sends = 'd', receives;
+	char sends = 'e', receives;
 	int ret;
 
-	while((ret = send(establishedConnectionFD, &sends, 1, 0)) == 0) {} //send char
+	while((ret = send(establishedConnectionFD, &sends, 1, 0)) == 0) {}
 	if(ret < 0) exit(1);
 
-	while((ret = recv(establishedConnectionFD, &receives, 1, 0)) == 0) {} //recieve char
+	while((ret = recv(establishedConnectionFD, &receives, 1, 0)) == 0) {}
 	if(ret < 0) exit(1);
 
-	if (receives == sends) { //compare if they're the same
+	if (receives == sends) {
 		return true;
 	}
 
@@ -77,22 +69,21 @@ bool handshake(int establishedConnectionFD) {
 
 /*
 * Function name: get_info()
-* Purpose: gets information for size, cipher, and key for later use
+* Purpose: gets information for size, plaintext, and key for later use
 * Arguments: char *, int *, int
 * Returns: none
 */
-void get_info(char *cipher_buffer, char *key_buffer, int *p_size, int establishedConnectionFD) {
+void get_info(char *plaintext_buffer, char *key_buffer, int *p_size, int establishedConnectionFD) {
 	int charsRead;
-
 	// gets the int from client and display it
 	charsRead = recv(establishedConnectionFD, p_size, sizeof(int), 0);
 	if (charsRead < 0) error("SERVER: ERROR reading from socket");
 
 	// get the plaintext buffer
-	memset(cipher_buffer, '\0', *p_size);
+	memset(plaintext_buffer, '\0', *p_size);
 	charsRead = 0;
 	while(charsRead < *p_size) {
-		charsRead += recv(establishedConnectionFD, cipher_buffer + charsRead, *p_size - charsRead, 0);
+		charsRead += recv(establishedConnectionFD, plaintext_buffer + charsRead, *p_size - charsRead, 0);
 	}
 	if (charsRead < 0) error("SERVER: ERROR reading from socket");
 
@@ -106,16 +97,16 @@ void get_info(char *cipher_buffer, char *key_buffer, int *p_size, int establishe
 }
 
 /*
-* Function name: send_plaintext()
-* Purpose: send plaintext back to client
+* Function name: send_cipher()
+* Purpose: send cipher back to client
 * Arguments: char *, int *, int
 * Returns: none
 */
-void send_plaintext(char *plaintext_buffer, int *p_size, int establishedConnectionFD) {
+void send_cipher(char *cipher_buffer, int *p_size, int establishedConnectionFD) {
 	int charsWritten = 0;
 
 	while(charsWritten < *p_size) {
-		charsWritten += send(establishedConnectionFD, plaintext_buffer + charsWritten, *p_size - charsWritten, 0);
+		charsWritten += send(establishedConnectionFD, cipher_buffer + charsWritten, *p_size - charsWritten, 0);
 	}
 	if (charsWritten < 0) error("SERVER: ERROR writing to socket");
 }
@@ -140,14 +131,14 @@ void switch_pids(char *plaintext_buffer, char *key_buffer, char *cipher_buffer, 
 
 			if(handshake(establishedConnectionFD)) {
 				//gets information for buffers
-				get_info(cipher_buffer, key_buffer, p_size, establishedConnectionFD);
+				get_info(plaintext_buffer, key_buffer, p_size, establishedConnectionFD);
 
-				//decrypt, input each char into buffer
+				//encrypt, input each char into buffer
 				int i;
 				for(i = 0; i < *p_size; i++) {
-					plaintext_buffer[i] = decrypt(cipher_buffer[i], key_buffer[i]);
+					cipher_buffer[i] = encrypt(plaintext_buffer[i], key_buffer[i]);
 				}
-				send_plaintext(plaintext_buffer, p_size, establishedConnectionFD); //sends back to server
+				send_cipher(cipher_buffer, p_size, establishedConnectionFD); //sends back to server
 			}
 
 			close(establishedConnectionFD); // Close the existing socket which is connected to the client
@@ -155,11 +146,11 @@ void switch_pids(char *plaintext_buffer, char *key_buffer, char *cipher_buffer, 
 			break;
 		
 		default: //parent
-			child_counter++; //increase body count
+			child_counter++;
 
 			if(child_counter == 5) {
 				waitpid(-1, NULL, 0);
-				child_counter--; //bury evidence
+				child_counter--;
 				while (waitpid(-1, NULL, WNOHANG) > 0) child_counter--;
 			}
     }
@@ -169,9 +160,9 @@ int main(int argc, char *argv[]) {
 	int listenSocketFD, establishedConnectionFD, portNumber, p_size;
 	socklen_t sizeOfClientInfo;
 	struct sockaddr_in serverAddress, clientAddress;
-	char cipher_buffer[99999];
+	char plaintext_buffer[99999];
 	char key_buffer[99999];
-	char plaintext_buffer[p_size]; //same size as plaintext
+	char cipher_buffer[p_size]; //same size as plaintext
 
 	if (argc < 2) { fprintf(stderr,"USAGE: %s port\n", argv[0]); exit(1); } // Check usage & args
 
@@ -200,7 +191,7 @@ int main(int argc, char *argv[]) {
 		establishedConnectionFD = accept(listenSocketFD, (struct sockaddr *)&clientAddress, &sizeOfClientInfo); // Accept
 		if (establishedConnectionFD < 0) error("SERVER: ERROR on accept");
 
-		//fork, continue to decryption
+		//fork, continue to encryption
 		switch_pids(plaintext_buffer, key_buffer, cipher_buffer, &p_size, establishedConnectionFD);
 		waitpid(-1, NULL, WNOHANG);
 	}
