@@ -1,11 +1,13 @@
 # One-Time Password
+
+## Description
  One-Time Password was an assignment from the CS 344: Operating Systems I Fall 2019 course. The following includes details about the assignment and the purpose of the main files in this repository. This project can only be run within the OS1 server in Oregon State University.
 
-# Assignment Instructions
-## Overview
+## Assignment Instructions
+### Overview
  Create five programs that encrypt and decrypt information using a one-time pad-like system.
  
-## Specifications
+### Specifications
  Only work on bash prompt in class server
  
  Plaintext: information that you wish to encrypt and protect (readable code)
@@ -63,7 +65,7 @@
     - rand() is fine
     - last character keygen outputs should be a newline. All error text must be output to stderr
 
-## Other Notes
+### Other Notes
 Braxton notes:
 - #define A 
   #if A:
