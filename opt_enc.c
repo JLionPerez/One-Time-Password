@@ -1,6 +1,6 @@
 /*
-* Title: Program 4 - OTP (otp_dec.c)
-* Description: sends information to server to decrypt and receives plaintext
+* Title: Program 4 - OTP (otp_enc.c)
+* Description: sends information to server to encrypt and recieve back cipher
 * Author: Joelle Perez
 * Date: 7 December 2019
 */
@@ -33,8 +33,8 @@ int buffer_size(char* buffer[], char* file_name) {
 	int b_length = 0; 
 	size_t buffer_length = 0;
 
-	fp = fopen(file_name, "r");
-	getline(buffer, &buffer_length, fp);
+	fp = fopen(file_name, "r"); //opends file
+	getline(buffer, &buffer_length, fp); //reads file
 
 	b_length = strlen(*buffer);
 
@@ -52,11 +52,11 @@ bool valid_buffer(char* buffer, int length) {
 	int i, counter = 0;
 
 	for(i = 0; i < length; i++) {
-		if((buffer[i] >= 'A') && (buffer[i] <= 'Z')) {
+		if((buffer[i] >= 'A') && (buffer[i] <= 'Z')) { //needs to be within A-Z
 			counter++;
 		}
 
-		else if(buffer[i] == ' ') {
+		else if(buffer[i] == ' ') { //or space
 			counter++;
 		}
 	}
@@ -75,31 +75,30 @@ bool valid_buffer(char* buffer, int length) {
 * Returns: boolean
 */
 bool handshake(int socketFD) {
-	char sends = 'd', receives;
+	char sends = 'e', receives;
 	int ret;
 
-	while((ret = recv(socketFD, &receives, 1, 0)) == 0) {}
+	while((ret = recv(socketFD, &receives, 1, 0)) == 0) {} //gets char
 	if(ret < 0) exit(1);
 
-	while((ret = send(socketFD, &sends, 1, 0)) == 0) {}
+	while((ret = send(socketFD, &sends, 1, 0)) == 0) {} //sends char
 	if(ret < 0) exit(1);
 
-	if (receives == sends) {
+	if (receives == sends) { //compares chars
 		return true;
 	}
 
-	fprintf(stderr, "Error otp_dec cannot use otp_enc_d.");
 	exit(2);
 	return false;
 }
 
 /*
 * Function name: send_buffers()
-* Purpose: sends information to server to decrypt
+* Purpose: sends information to server to encrypt
 * Arguments: char *, int *, int
 * Returns: none
 */
-void send_buffers(char *cipher_buffer, char *key_buffer, int *p_size, int *k_size, int socketFD) {
+void send_buffers(char *plaintext_buffer, char *key_buffer, int *p_size, int *k_size, int socketFD) {
 	int charsWritten = 0, charsRead = 0;
 
 	//send length of plaintext (no need to send key length)
@@ -110,7 +109,7 @@ void send_buffers(char *cipher_buffer, char *key_buffer, int *p_size, int *k_siz
 	//send plaintext to server
 	charsWritten = 0;
 	while(charsWritten < *p_size) {
-		charsWritten += send(socketFD, cipher_buffer + charsWritten, *p_size - charsWritten, 0);
+		charsWritten += send(socketFD, plaintext_buffer + charsWritten, *p_size - charsWritten, 0);
 	}
 	if (charsWritten < 0) error("CLIENT: ERROR plaintext writing to socket");
 	if (charsWritten < *p_size) { printf("CLIENT: WARNING: Not all data written to socket!\n"); fflush(stdout); }
@@ -126,14 +125,14 @@ void send_buffers(char *cipher_buffer, char *key_buffer, int *p_size, int *k_siz
 	fflush(stdout);
 
 	// Get cipher from server
-	char* plaintext_buffer = calloc(*p_size + 1, 1); //put memory in cipher, malloc and memset combined
+	char* cipher_buffer = calloc(*p_size + 1, 1); //put memory in cipher, malloc and memset combined
 	charsRead = 0;
 
 	while(charsRead < *p_size) {
-		charsRead += recv(socketFD, plaintext_buffer + charsRead, *p_size - charsRead, 0);
+		charsRead += recv(socketFD, cipher_buffer + charsRead, *p_size - charsRead, 0);
 	}
 	if (charsRead < 0) error("CLIENT: ERROR reading from socket");
-	fprintf(stdout, "%s\n", plaintext_buffer);
+	fprintf(stdout, "%s\n", cipher_buffer);
 }
 
 int main(int argc, char *argv[]) {
@@ -143,7 +142,7 @@ int main(int argc, char *argv[]) {
 	bool p_flag, k_flag;
 	struct sockaddr_in serverAddress;
 	struct hostent* serverHostInfo;
-	char* cipher_buffer;
+	char* plaintext_buffer;
 	char* key_buffer;
     
 	// Check usage & args
@@ -151,17 +150,17 @@ int main(int argc, char *argv[]) {
 
 	//GET BUFFERS READY
 	//get the sizes including newline
-	p_size = buffer_size(&cipher_buffer, argv[1]);
+	p_size = buffer_size(&plaintext_buffer, argv[1]);
 	k_size = buffer_size(&key_buffer, argv[2]);
 
 	//get rid of newlines
-	cipher_buffer[strcspn(cipher_buffer, "\n")] = '\0';
+	plaintext_buffer[strcspn(plaintext_buffer, "\n")] = '\0';
 	key_buffer[strcspn(key_buffer, "\n")] = '\0';
 	p_size--; //reduce for no newline
 	k_size--; 
 
 	//checks for bad characters
-	p_flag = valid_buffer(cipher_buffer, p_size); //plaintext
+	p_flag = valid_buffer(plaintext_buffer, p_size); //plaintext
 	k_flag = valid_buffer(key_buffer, k_size);	//key
 
 	//checks if key file is bigger or equal to plaintext
@@ -188,7 +187,7 @@ int main(int argc, char *argv[]) {
 		error("CLIENT: ERROR connecting");
 
 	if(handshake(socketFD)) {
-		send_buffers(cipher_buffer, key_buffer, &p_size, &k_size, socketFD);
+		send_buffers(plaintext_buffer, key_buffer, &p_size, &k_size, socketFD);
 	}
 
 	close(socketFD); // Close the socket
